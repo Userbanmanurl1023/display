@@ -18,24 +18,25 @@ jobs:
 
       - name: Align and sign (uses preinstalled SDK)
         run: |
-          set -x
-          pwd
-          ls -la
-          echo "ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          if [ -z "$SDK" ]; then
-            for d in /usr/local/lib/android/sdk /opt/android-sdk "$HOME/Android/sdk"; do
-              [ -d "$d/build-tools" ] && SDK="$d" && break
-            done
-          fi
           echo "SDK=$SDK"
           ls "$SDK/build-tools"
-          BT=$(ls -d "$SDK"/build-tools/* | sort -V | tail -n 1)
-          echo "Using build-tools: $BT"
-          "$BT/zipalign" -p 4 app-unsigned.apk app-aligned.apk
+          "$SDK/build-tools/34.0.0/zipalign" -p 4 app-unsigned.apk app-aligned.apk
           keytool -genkeypair -keystore debug.jks -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10950 -storepass android -keypass android -dname "CN=Android Debug, OU=Android, O=Unknown, C=US"
-          "$BT/apksigner" sign --ks debug.jks --ks-pass:pass:android --v1-signing-enabled true --v2-signing-enabled true --out app-signed.apk app-aligned.apk
-          "$BT/apksigner" verify --print-certs app-signed.apk
+          BT37="$SDK/build-tools/37.0.0/apksigner"
+          BT34="$SDK/build-tools/34.0.0/apksigner"
+          if "$BT37" sign --ks debug.jks --ks-pass pass:android --v1-signing-enabled true --v2-signing-enabled true --out app-signed.apk app-aligned.apk; then
+            echo "signed with build-tools 37"
+            "$BT37" verify --print-certs app-signed.apk
+          elif "$BT34" sign --ks debug.jks --ks-pass:pass:android --v1-signing-enabled true --v2-signing-enabled true --out app-signed.apk app-aligned.apk; then
+            echo "signed with build-tools 34"
+            "$BT34" verify --print-certs app-signed.apk
+          else
+            echo "apksigner unavailable, falling back to jarsigner (v1)"
+            cp app-aligned.apk app-signed.apk
+            jarsigner -keystore debug.jks -storepass android -keypass android app-signed.apk androiddebugkey
+            jarsigner -verify app-signed.apk
+          fi
           ls -la app-signed.apk
 
       - name: Upload signed APK
