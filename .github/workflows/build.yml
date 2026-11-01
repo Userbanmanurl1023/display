@@ -16,19 +16,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install build-tools
-        run: sdkmanager "build-tools;34.0.0"
-
-      - name: Generate debug key
-        run: keytool -genkeypair -keystore debug.jks -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10950 -storepass android -keypass android -dname "CN=Android Debug, OU=Android, O=Unknown, C=US"
-
-      - name: Align and sign
+      - name: Align and sign (uses preinstalled SDK)
         run: |
-          BT="$ANDROID_HOME/build-tools/34.0.0"
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          echo "Using build-tools: $BT"
           "$BT/zipalign" -p 4 app-unsigned.apk app-aligned.apk
+          keytool -genkeypair -keystore debug.jks -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10950 -storepass android -keypass android -dname "CN=Android Debug, OU=Android, O=Unknown, C=US"
           "$BT/apksigner" sign --ks debug.jks --ks-pass:android --out app-signed.apk app-aligned.apk
           "$BT/apksigner" verify --print-certs app-signed.apk
 
