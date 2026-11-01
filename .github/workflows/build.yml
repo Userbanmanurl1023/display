@@ -22,7 +22,7 @@ jobs:
           echo "Using build-tools: $BT"
           "$BT/zipalign" -p 4 app-unsigned.apk app-aligned.apk
           keytool -genkeypair -keystore debug.jks -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10950 -storepass android -keypass android -dname "CN=Android Debug, OU=Android, O=Unknown, C=US"
-          "$BT/apksigner" sign --ks debug.jks --ks-pass:android --out app-signed.apk app-aligned.apk
+          "$BT/apksigner" sign --ks debug.jks --ks-pass--ks-pass:pass:android :android --out app-signed.apk app-aligned.apk
           "$BT/apksigner" verify --print-certs app-signed.apk
 
       - name: Upload signed APK
